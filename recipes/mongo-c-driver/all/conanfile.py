@@ -65,6 +65,8 @@ class MongoCDriverConan(ConanFile):
         cmake_layout(self, src_folder="src")
 
     def requirements(self):
+        self.requires("utf8proc/[>=2.8.0]")
+
         if self.options.with_ssl == "openssl":
             self.requires("openssl/[>=1.1 <4]")
         elif self.options.with_ssl == "libressl":
@@ -144,6 +146,7 @@ class MongoCDriverConan(ConanFile):
         tc.cache_variables["ENABLE_CLIENT_SIDE_ENCRYPTION"] = "OFF"  # libmongocrypt recipe not yet in CCI
         tc.cache_variables["ENABLE_MONGODB_AWS_AUTH"] = "AUTO"
         tc.cache_variables["ENABLE_PIC"] = self.options.get_safe("fPIC", True)
+        tc.cache_variables["USE_BUNDLED_UTF8PROC"] = "OFF"
         # Avoid to install vc runtime stuff
         tc.variables["CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP"] = "TRUE"
         if self.options.with_ssl == "openssl":
@@ -178,6 +181,8 @@ class MongoCDriverConan(ConanFile):
                         'if(ENABLE_SNAPPY MATCHES "ON")\n  find_package(Snappy REQUIRED)')
         replace_in_file(self, libmongoc_cmake, "SNAPPY_LIBRARIES", "Snappy_LIBRARIES")
         replace_in_file(self, libmongoc_cmake, "SNAPPY_INCLUDE_DIRS", "Snappy_INCLUDE_DIRS")
+        replace_in_file(self, libmongoc_cmake, "set(UTF8PROC_INCLUDE_DIRS, \"\")", "")
+        replace_in_file(self, libmongoc_cmake, "UTF8PROC_INCLUDE_DIRS", "utf8proc_INCLUDE_DIRS")
         if Version(self.version) < "1.25":
             replace_in_file(self, libmongoc_cmake, "set (SSL_LIBRARIES -ltls -lcrypto)", "")
         # cleanup rpath
@@ -235,7 +240,7 @@ class MongoCDriverConan(ConanFile):
         # mongoc
         if not self.options.shared:
             self.cpp_info.components["mongoc"].defines = ["MONGOC_STATIC"]
-        self.cpp_info.components["mongoc"].requires = ["bson"]
+        self.cpp_info.components["mongoc"].requires = ["bson", "utf8proc::utf8proc"]
         if self.settings.os == "Windows":
             self.cpp_info.components["mongoc"].system_libs.append("ws2_32")
         if self.options.with_ssl == "darwin":
